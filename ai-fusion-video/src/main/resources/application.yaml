@@ -28,6 +28,9 @@ spring:
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
+    call-setters-on-nulls: true
+    # 权限、租约和数据库时间的重复检查必须重新查询，不复用事务内的旧值。
+    local-cache-scope: STATEMENT
   global-config:
     db-config:
       id-type: auto
@@ -64,6 +67,17 @@ video:
   compose:
     ffmpeg-path: ${VIDEO_COMPOSE_FFMPEG_PATH:ffmpeg}
     ffprobe-path: ${VIDEO_COMPOSE_FFPROBE_PATH:ffprobe}
+    # 合成后配乐（Sonilo）的调优参数。开关、地址与密钥不在这里：
+    # 在「设置 → AI 模型 → API 配置」新建平台为 sonilo 的配置即开启，禁用或删除即关闭
+    bgm:
+      # 配乐风格提示，可留空（留空按画面内容自动作曲）
+      music-prompt: ${VIDEO_COMPOSE_BGM_MUSIC_PROMPT:}
+      # 与成片原声混音时配乐音轨的音量（0~1）
+      music-volume: ${VIDEO_COMPOSE_BGM_MUSIC_VOLUME:0.7}
+      # 是否同时生成音效音轨
+      sfx-enabled: ${VIDEO_COMPOSE_BGM_SFX_ENABLED:false}
+      poll-interval-seconds: ${VIDEO_COMPOSE_BGM_POLL_INTERVAL_SECONDS:5}
+      timeout-seconds: ${VIDEO_COMPOSE_BGM_TIMEOUT_SECONDS:900}
 
 fusion:
   agentscope:
@@ -83,9 +97,11 @@ fusion:
         coalesce-max-chars: 1024
       execution:
         owner-lease: 30s
-        run-timeout: 30m
+        # 0 表示不限制总执行时间，所有权租约和用户取消仍然有效。
+        run-timeout: 0s
         confirmation-timeout: 48h
-        max-iters: 999
+        # 0 表示不设置业务步数上限。
+        max-iters: 0
       skills:
         enabled: true
         fail-fast: true

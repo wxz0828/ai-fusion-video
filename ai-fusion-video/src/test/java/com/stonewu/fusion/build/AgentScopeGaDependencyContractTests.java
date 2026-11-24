@@ -46,18 +46,32 @@ class AgentScopeGaDependencyContractTests {
                     + "|formatter\\.(gemini|anthropic)\\.[A-Za-z0-9_$]+|session\\.mysql\\.[A-Za-z0-9_$]+"
                     + "|hook\\.[A-Za-z0-9_$]+|ReActAgent)"
                     + "|AnthropicAgentScopeProxySupport|ProxyAwareAnthropicChatModel"
-                    + "|GeminiToolResponseAwareChatFormatter|VertexAgentScopeProxySupport|MysqlSession");
+                    + "|GeminiToolResponseAwareChatFormatter|VertexAgentScopeProxySupport|\\bMysqlSession\\b");
+
+    @Test
+    void obsoleteSymbolGuardDoesNotMatchTimeZoneMethodNames() {
+        assertThat(FORBIDDEN_SOURCE.matcher("new MysqlSession()").find()).isTrue();
+        assertThat(FORBIDDEN_SOURCE.matcher("loadsApplicationAndMysqlSessionTimeZonesFromConfiguration").find())
+                .isFalse();
+    }
 
     @Test
     void pomDeclaresOnlyGa() throws Exception {
         String pom = Files.readString(POM_PATH);
-        assertThat(pom).containsOnlyOnce("<agentscope.version>2.0.0</agentscope.version>");
+        assertThat(pom).containsOnlyOnce("<agentscope.version>2.0.4</agentscope.version>");
         assertThat(pom).containsOnlyOnce("<victools.version>4.38.0</victools.version>");
         assertThat(pom).doesNotContain("agentscope-spring-boot-starter",
                 "agentscope-extensions-session-mysql", "2.0.0-RC",
                 "<artifactId>agentscope</artifactId>", "<artifactId>agentscope-core</artifactId>",
-                "<jackson-bom.version>",
-                "<artifactId>json-schema-validator</artifactId>");
+                "<jackson-bom.version>");
+
+        // Canvas MCP contracts now use the validator directly. Keep its Jackson 2
+        // version explicit, while still rejecting the old AgentScope overrides.
+        assertThat(directDependencies(directChild(pomProject(), "dependencies")).stream()
+                .filter(dependency -> "com.networknt".equals(directChildText(dependency, "groupId")))
+                .filter(dependency -> "json-schema-validator".equals(directChildText(dependency, "artifactId"))))
+                .singleElement().satisfies(dependency ->
+                        assertThat(directChildText(dependency, "version")).isEqualTo("2.0.0"));
 
         List<String> agentScopeDependencies = new ArrayList<>();
         for (Element dependency : directDependencies(directChild(pomProject(), "dependencies"))) {
